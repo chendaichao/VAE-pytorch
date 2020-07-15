@@ -30,14 +30,16 @@ class MLP(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, shape, nhid = 16, ncond = 0):
         super(Encoder, self).__init__()
-        c, w, h = shape
-        self.encode = nn.Sequential(nn.Conv2d(1, 8, 7, padding = 3), nn.BatchNorm2d(8), nn.ReLU(inplace = True), 
-                                    nn.Conv2d(8, 16, 7, padding = 3), nn.BatchNorm2d(16), nn.ReLU(inplace = True), 
+        c, h, w = shape
+        ww = ((w-8)//2 - 4)//2
+        hh = ((h-8)//2 - 4)//2
+        self.encode = nn.Sequential(nn.Conv2d(c, 16, 5, padding = 0), nn.BatchNorm2d(16), nn.ReLU(inplace = True), 
+                                    nn.Conv2d(16, 32, 5, padding = 0), nn.BatchNorm2d(32), nn.ReLU(inplace = True), 
                                     nn.MaxPool2d(2, 2),
-                                    nn.Conv2d(16, 16, 5, padding = 2), nn.BatchNorm2d(16), nn.ReLU(inplace = True), 
-                                    nn.Conv2d(16, 32, 5, padding = 2), nn.BatchNorm2d(32), nn.ReLU(inplace = True), 
+                                    nn.Conv2d(32, 64, 3, padding = 0), nn.BatchNorm2d(64), nn.ReLU(inplace = True), 
+                                    nn.Conv2d(64, 64, 3, padding = 0), nn.BatchNorm2d(64), nn.ReLU(inplace = True), 
                                     nn.MaxPool2d(2, 2),
-                                    Flatten(), MLP([w*h*2, 256, 128])
+                                    Flatten(), MLP([ww*hh*64, 256, 128])
                                    )
         self.calc_mean = MLP([128+ncond, 64, nhid], last_activation = False)
         self.calc_logvar = MLP([128+ncond, 64, nhid], last_activation = False)
@@ -53,7 +55,7 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         c, w, h = shape
         self.shape = shape
-        self.decode = nn.Sequential(MLP([nhid+ncond, 128, 256, c*w*h], last_activation = False), nn.Sigmoid())
+        self.decode = nn.Sequential(MLP([nhid+ncond, 64, 128, 256, c*w*h], last_activation = False), nn.Sigmoid())
     def forward(self, z, y = None):
         c, w, h = self.shape
         if (y is None):
@@ -86,12 +88,12 @@ class VAE(nn.Module):
         return res
 
 class cVAE(nn.Module):
-    def __init__(self, shape, nclass, nhid = 16):
+    def __init__(self, shape, nclass, nhid = 16, ncond = 16):
         super(cVAE, self).__init__()
         self.dim = nhid
-        self.encoder = Encoder(shape, nhid, ncond = nhid)
-        self.decoder = Decoder(shape, nhid, ncond = nhid)
-        self.label_embedding = nn.Embedding(nclass, nhid)
+        self.encoder = Encoder(shape, nhid, ncond = ncond)
+        self.decoder = Decoder(shape, nhid, ncond = ncond)
+        self.label_embedding = nn.Embedding(nclass, ncond)
         
     def sampling(self, mean, logvar):
         eps = torch.randn(mean.shape).to(device)

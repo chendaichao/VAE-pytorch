@@ -19,20 +19,20 @@ transform = torchvision.transforms.Compose([
 ])
 
 train_data = torchvision.datasets.MNIST(root='../../Datasets', train=True, download=True, transform=transform)
-train_iter = torch.utils.data.DataLoader(train_data, batch_size=128, shuffle=True)
+train_iter = torch.utils.data.DataLoader(train_data, batch_size=512, shuffle=True)
 
 ############## loading models ###################
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-net = cVAE((1, 28, 28), 10, nhid = 16)
+net = cVAE((1, 28, 28), 10, nhid = 2, ncond = 16)
 net.to(device)
 print(net)
 save_name = "cVAE.pt"
 
 ############### training #########################
 
-lr = 0.03
+lr = 0.01
 optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay = 0.0001)
 
 def adjust_lr(optimizer, decay_rate=0.95):
